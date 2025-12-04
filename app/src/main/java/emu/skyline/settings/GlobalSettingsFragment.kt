@@ -54,11 +54,6 @@ class GlobalSettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
-        findPreference<Preference>("enable_speed_limit")?.setOnPreferenceChangeListener { _, newValue ->
-            disablePreference("speed_limit", !(newValue as Boolean), null)
-            true
-        }
-
         CoroutineScope(Dispatchers.IO).launch {
             WindowInfoTracker.getOrCreate(requireContext()).windowLayoutInfo(requireActivity()).collect { newLayoutInfo ->
                 withContext(Dispatchers.Main) {
