@@ -4,19 +4,6 @@
         android:key="category_system"
         android:title="@string/system">
         <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:summary="@string/enable_speed_limit_desc"
-            app:key="enable_speed_limit"
-            app:title="@string/enable_speed_limit" />
-        <emu.skyline.preference.SeekBarPreference
-            android:summary="@string/speed_limit_desc"
-            android:defaultValue="100"
-            android:key="speed_limit"
-            android:title="@string/speed_limit" 
-            app:maxValue="200"
-            app:minValue="0"
-            app:isPercentage="true" />
-        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:summaryOff="@string/handheld_enabled"
             android:summaryOn="@string/docked_enabled"
