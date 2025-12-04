@@ -107,12 +107,6 @@
         <item>0</item>
         <item>8</item>
     </integer-array>
-    <string-array name="vsync_modes">
-        <item>Immediate (Off)</item>
-        <item>Mailbox</item>
-        <item>FIFO (On)</item>
-        <item>FIFO (Relaxed)</item>
-    </string-array>
     <string-array name="anisotropic_filters">
         <item>Off</item>
         <item>Auto</item>
