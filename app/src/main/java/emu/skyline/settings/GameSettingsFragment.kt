@@ -53,25 +53,20 @@ class GameSettingsFragment : PreferenceFragmentCompat() {
 
         // Uncheck `disable_frame_throttling` if `force_triple_buffering` gets disabled
         val disableFrameThrottlingPref = findPreference<TwoStatePreference>("disable_frame_throttling")!!
-        findPreference<TwoStatePreference>("force_triple_buffering")?.setOnPreferenceChangeListener { _, newValue ->
-            if (newValue == false)
-                disableFrameThrottlingPref.isChecked = false
-            true
-        }
-
+        
         // Only show validation layer setting in debug builds
         @Suppress("SENSELESS_COMPARISON")
         if (BuildConfig.BUILD_TYPE != "release")
             findPreference<Preference>("validation_layer")?.isVisible = true
 
-        findPreference<GpuDriverPreference>("gpu_driver")?.item = item
-
-        findPreference<SeekBarPreference>("executor_slot_count_scale")?.setMaxValue(Runtime.getRuntime().availableProcessors().toInt())
-
-        findPreference<SwitchPreferenceCompat>("enable_speed_limit")?.isChecked?.let {
-            disablePreference("speed_limit", !it, null)
+        if (!GpuDriverHelper.supportsForceMaxGpuClocks()) {
+            val forceMaxGpuClocksPref = findPreference<TwoStatePreference>("force_max_gpu_clocks")!!
+            forceMaxGpuClocksPref.isSelectable = false
+            forceMaxGpuClocksPref.isChecked = false
+            forceMaxGpuClocksPref.summary = context!!.getString(R.string.force_max_gpu_clocks_desc_unsupported)
         }
-        disablePreference("force_max_gpu_clocks", !GpuDriverHelper.supportsForceMaxGpuClocks(), context?.getString(R.string.force_max_gpu_clocks_desc_unsupported))
+
+        findPreference<GpuDriverPreference>("gpu_driver")?.item = item
 
         // Hide settings that don't support per-game configuration
         var prefToRemove = findPreference<Preference>("profile_picture_value")
@@ -85,20 +80,3 @@ class GameSettingsFragment : PreferenceFragmentCompat() {
         if (BuildConfig.BUILD_TYPE == "release")
             findPreference<PreferenceCategory>("category_debug")?.isVisible = false
     }
-    
-    private fun disablePreference(
-        preferenceId: String, 
-        isDisabled: Boolean, 
-        disabledSummary: String? = null
-    ) {
-        val preference = findPreference<Preference>(preferenceId)!!
-        preference.isSelectable = !isDisabled
-        preference.isEnabled = !isDisabled
-        if (preference is TwoStatePreference && isDisabled) {
-            preference.isChecked = false
-        }
-        if (isDisabled && disabledSummary != null) {
-            preference.summary = disabledSummary
-        }
-    }
-}
