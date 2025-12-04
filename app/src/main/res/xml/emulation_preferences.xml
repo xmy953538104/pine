@@ -38,13 +38,13 @@
             app:refreshRequired="true"
             app:title="@string/system_language"
             app:useSimpleSummaryProvider="true" />
-        <emu.skyline.preference.IntegerListPreference
-            android:defaultValue="-1"
-            android:entries="@array/system_region"
-            android:entryValues="@array/system_region_val"
-            app:key="system_region"
-            app:title="@string/system_region"
-            app:useSimpleSummaryProvider="true" />
+         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="force_triple_buffering"
+            android:summaryOff="@string/disable_frame_throttling_disabled"
+            android:summaryOn="@string/disable_frame_throttling_enabled"
+            app:key="disable_frame_throttling"
+            app:title="@string/disable_frame_throttling" />
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:summary="@string/internet"
