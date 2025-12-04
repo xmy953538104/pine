@@ -67,7 +67,13 @@ class GlobalSettingsFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<SeekBarPreference>("executor_slot_count_scale")?.setMaxValue(Runtime.getRuntime().availableProcessors().toInt())
+       // Uncheck `disable_frame_throttling` if `force_triple_buffering` gets disabled
+        val disableFrameThrottlingPref = findPreference<TwoStatePreference>("disable_frame_throttling")!!
+        findPreference<TwoStatePreference>("force_triple_buffering")?.setOnPreferenceChangeListener { _, newValue ->
+            if (newValue == false)
+                disableFrameThrottlingPref.isChecked = false
+            true
+        }
         
         // Only show validation layer setting in debug builds
         @Suppress("SENSELESS_COMPARISON")
