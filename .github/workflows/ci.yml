@@ -58,7 +58,6 @@ jobs:
         run: echo "yes" | $ANDROID_HOME/tools/bin/sdkmanager "cmake;${{ env.CMAKE_VERSION }}" "ndk;${{ env.NDK_VERSION }}" --channel=3 | grep -v = || true
 
       - name: Decode Keystore
-        if: env.IS_BUILD_SIGNED == 'true'
         env:
           KEYSTORE_ENCODED: ${{ secrets.KEYSTORE }}
         run: | 
