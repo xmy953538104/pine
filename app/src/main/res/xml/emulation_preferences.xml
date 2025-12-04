@@ -141,12 +141,6 @@
             android:summaryOn="@string/triple_buffering_enabled"
             app:key="force_triple_buffering"
             app:title="@string/force_triple_buffering" />
-        <emu.skyline.preference.IntegerListPreference
-            android:defaultValue="2"
-            android:entries="@array/vsync_modes"
-            app:key="vsync_mode"
-            app:title="@string/vsync_mode"
-            app:useSimpleSummaryProvider="true"/>
         <emu.skyline.preference.SeekBarPreference
             android:summary="@string/executor_slot_count_scale_desc"
             android:defaultValue="4"
