@@ -2,9 +2,7 @@
 package emu.skyline.preference
 
 import android.content.Context
-import android.content.res.TypedArray
 import android.util.AttributeSet
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import androidx.preference.DialogPreference
@@ -37,10 +35,6 @@ class SeekBarPreference(context: Context, attrs: AttributeSet) : DialogPreferenc
         }
     }
 
-    override fun onGetDefaultValue(a: TypedArray, index: Int): Any {
-        return a.getInt(index, 0)
-    }
-
     override fun onClick() { showMaterialDialog() }
 
     private fun showMaterialDialog() {
@@ -62,14 +56,12 @@ class SeekBarPreference(context: Context, attrs: AttributeSet) : DialogPreferenc
             currentValue = if (isPercentage) value else value.toInt()
         }
 
-        var dismissTrigger: String? = null
-
         // Build and show the MaterialAlertDialog
         MaterialAlertDialogBuilder(context)
             .setTitle(title)
             .setView(dialogView)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                dismissTrigger = "positive_button"
+                
                 if (isPercentage) {
                     persistFloat(currentValue.toFloat())
                 } else {
@@ -78,10 +70,8 @@ class SeekBarPreference(context: Context, attrs: AttributeSet) : DialogPreferenc
                 updateSummary()
                 callChangeListener(currentValue)
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .setOnDismissListener {
-                if (dismissTrigger != "positive_button")
-                    slider.value = summary?.toString()?.replace("%", "")?.toIntOrNull()?.toFloat() ?: minValue.toFloat()
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                slider.value = summary.toString().replace("%", "").toInt().toFloat()
             }
             .show()
     }
@@ -103,21 +93,11 @@ class SeekBarPreference(context: Context, attrs: AttributeSet) : DialogPreferenc
     }
 
     override fun onSetInitialValue(defaultValue: Any?) {
-        val actualDefaultValue = when (defaultValue) {
-            is String -> defaultValue.toIntOrNull() ?: minValue.toInt()
-            is Int -> defaultValue ?: minValue.toInt()
-            is Float -> defaultValue.toInt()
-            else -> minValue.toInt() // fallback to minValue if default is invalid
+         currentValue = if (isPercentage) {
+            getPersistedFloat((defaultValue as? Float) ?: minValue.toFloat()).toFloat()
+        } else {
+            getPersistedInt((defaultValue as? Int) ?: minValue.toInt())
         }
-        currentValue = if (!isPercentage) getPersistedInt(actualDefaultValue!!)!! else getPersistedFloat(actualDefaultValue.toFloat()!!).toInt()!!
         updateSummary()
-    }
-
-    fun setMaxValue(max: Any) { 
-        if (isPercentage) maxValue = max as Float else maxValue = max as Int
-    }
-
-    fun setMinValue(min: Any) {
-        if (isPercentage) minValue = min as Float else minValue = min as Int
     }
 }
