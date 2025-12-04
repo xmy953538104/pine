@@ -51,8 +51,11 @@ class GameSettingsFragment : PreferenceFragmentCompat() {
             findPreference("category_debug")
         ).forEach { it?.dependency = "use_custom_settings" }
 
-        findPreference<Preference>("enable_speed_limit")?.setOnPreferenceChangeListener { _, newValue ->
-            disablePreference("speed_limit", !(newValue as Boolean), null)
+        // Uncheck `disable_frame_throttling` if `force_triple_buffering` gets disabled
+        val disableFrameThrottlingPref = findPreference<TwoStatePreference>("disable_frame_throttling")!!
+        findPreference<TwoStatePreference>("force_triple_buffering")?.setOnPreferenceChangeListener { _, newValue ->
+            if (newValue == false)
+                disableFrameThrottlingPref.isChecked = false
             true
         }
 
