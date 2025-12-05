@@ -64,10 +64,17 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("ks.jks")                                     // 直接写死！
-            storePassword "${System.getenv('SIGNING_KEYSTORE_PASSWORD')}"
-            keyAlias "${System.getenv('SIGNING_KEY_ALIAS')}"
-            keyPassword "${System.getenv('SIGNING_KEY_PASSWORD')}"
+            // CI 环境才会走到这里，我们把解码后的 ks.jks 放在项目根目录的 app/ks.jks
+            if (System.getenv("SIGNING_STORE_PATH") != null) {
+                storeFile file(System.getenv("SIGNING_STORE_PATH"))
+                storePassword System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword System.getenv("SIGNING_KEY_PASSWORD")
+            }
+            // 如果本地没密钥，就留空也行，反正 CI 有
+        }
+        debug {
+            // debug 签名随便，Gradle 自动生成就行
         }
     }
 
@@ -83,7 +90,8 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig = isBuildSigned ? signingConfigs.ci : signingConfigs.debug
+            // 关键：强制使用我们上面定义的 release 配置
+            signingConfig signingConfigs.release
             manifestPlaceholders += [emulationProcess: ":emulationProcess"]
         }
 
@@ -97,14 +105,14 @@ android {
             }
             minifyEnabled false
             shrinkResources false
-            signingConfig = isBuildSigned ? signingConfigs.ci : signingConfigs.debug
+            signingConfig signingConfigs.release
         }
 
         debug {
             debuggable true
             minifyEnabled false
             shrinkResources false
-            signingConfig = isBuildSigned ? signingConfigs.ci : signingConfigs.debug
+            signingConfig signingConfigs.debug
         }
     }
 
