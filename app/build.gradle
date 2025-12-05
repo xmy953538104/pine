@@ -36,7 +36,6 @@ android {
         buildConfigField "String[]", "AVAILABLE_APP_LANGUAGES", "new String[]{\"" + locales.join("\",\"") + "\"}"
     }
 
-    /* JVM Bytecode Options */
     def javaVersion = JavaVersion.VERSION_17
     kotlinOptions {
         jvmTarget = javaVersion.toString()
@@ -63,13 +62,13 @@ android {
         debug { }
     }
 
+    // 关键：所有构建类型都强制关闭 R8/D8 压缩
     buildTypes {
         release {
             debuggable true
-            // 彻底关闭 R8/D8 缩码，保证 @JvmField 字段不被删
-            minifyEnabled false
-            shrinkResources false
-            // proguardFiles 那行直接删掉（已经没用了）
+            minifyEnabled false          // 关闭 R8
+            shrinkResources false        // 关闭资源压缩
+            // 已删除 proguardFiles 行，无需保留
 
             externalNativeBuild {
                 cmake {
@@ -111,11 +110,10 @@ android {
         }
     }
 
-    // 关键：在这里全局强制关闭 D8 压缩（比 buildTypes 里优先级更高）
+    // 正确写法：只保留这两个
     buildFeatures {
         viewBinding true
         buildConfig true
-        minifyEnabled false   // ← 这一行才是真正的救命稻草
     }
 
     lint {
