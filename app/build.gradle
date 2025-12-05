@@ -79,38 +79,38 @@ android {
     }
 
     buildTypes {
+        // ========================== 正式版（CI 打包的就是这个） ==========================
         release {
             debuggable true
+            // 关键改动：关闭 R8/ProGuard 缩码，彻底解决 JNI 字段被删的问题
+            minifyEnabled false
+            shrinkResources false
+            // 下面这行可以直接删掉，因为已经不走 ProGuard 了（留着也无害）
+            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
             externalNativeBuild {
                 cmake {
                     arguments "-DCMAKE_BUILD_TYPE=RELEASE",
                               "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
                 }
             }
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // 关键：强制使用我们上面定义的 release 配置
             signingConfig signingConfigs.release
             manifestPlaceholders += [emulationProcess: ":emulationProcess"]
         }
 
+        // ========================== 调试版（本地跑的） ==========================
         reldebug {
+            initWith release                     // 继承 release 的配置
             debuggable true
-            externalNativeBuild {
-                cmake {
-                    arguments "-DCMAKE_BUILD_TYPE=RELWITHDEBINFO",
-                              "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
-                }
-            }
-            minifyEnabled false
+            minifyEnabled false                  // 也关掉
             shrinkResources false
             signingConfig signingConfigs.release
         }
 
+        // ========================== 普通调试版 ==========================
         debug {
             debuggable true
-            minifyEnabled false
+            minifyEnabled false                  // 永远关掉
             shrinkResources false
             signingConfig signingConfigs.debug
         }
