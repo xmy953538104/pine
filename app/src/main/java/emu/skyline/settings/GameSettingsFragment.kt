@@ -80,3 +80,4 @@ class GameSettingsFragment : PreferenceFragmentCompat() {
         if (BuildConfig.BUILD_TYPE == "release")
             findPreference<PreferenceCategory>("category_debug")?.isVisible = false
     }
+}
