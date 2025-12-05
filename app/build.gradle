@@ -8,7 +8,6 @@ plugins {
 }
 
 idea.module {
-    // These are not viable to index on most systems so exclude them to prevent IDE crashes
     excludeDirs.add(file("libraries/boost"))
     excludeDirs.add(file("libraries/llvm"))
 }
@@ -21,30 +20,20 @@ android {
 
     defaultConfig {
         applicationId "io.github.pine.emu"
-
         minSdk 29
         targetSdk 35
-
         versionCode 2
         versionName "2.1.1"
 
         ndk {
-            //noinspection ChromeOsAbiSupport
             abiFilters "arm64-v8a"
         }
 
-        // Disable the use of a separate process for emulation by default
         manifestPlaceholders["emulationProcess"] = ""
-
-        // Only enable separate process for release builds
         manifestPlaceholders += [emulationProcess: ""]
 
         def locales = ["en", "de", "el", "es", "es-419", "fr", "hu", "id", "it", "ja", "ko", "pl", "ru", "ta", "zh-Hans", "zh-Hant"]
-
-        // Add available locales to the build config so that they can be accessed from the app
         buildConfigField "String[]", "AVAILABLE_APP_LANGUAGES", "new String[]{\"" + locales.join("\",\"") + "\"}"
-        // Uncomment the following line whenever AAPT2 will properly support BCP47 language tags
-        //resourceConfigurations += locales
     }
 
     /* JVM Bytecode Options */
@@ -64,29 +53,23 @@ android {
 
     signingConfigs {
         release {
-            // CI 环境才会走到这里，我们把解码后的 ks.jks 放在项目根目录的 app/ks.jks
             if (System.getenv("SIGNING_STORE_PATH") != null) {
                 storeFile file(System.getenv("SIGNING_STORE_PATH"))
                 storePassword System.getenv("SIGNING_STORE_PASSWORD")
                 keyAlias System.getenv("SIGNING_KEY_ALIAS")
                 keyPassword System.getenv("SIGNING_KEY_PASSWORD")
             }
-            // 如果本地没密钥，就留空也行，反正 CI 有
         }
-        debug {
-            // debug 签名随便，Gradle 自动生成就行
-        }
+        debug { }
     }
 
     buildTypes {
-        // ========================== 正式版（CI 打包的就是这个） ==========================
         release {
             debuggable true
-            // 关键改动：关闭 R8/ProGuard 缩码，彻底解决 JNI 字段被删的问题
+            // 彻底关闭 R8/D8 缩码，保证 @JvmField 字段不被删
             minifyEnabled false
             shrinkResources false
-            // 下面这行可以直接删掉，因为已经不走 ProGuard 了（留着也无害）
-            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // proguardFiles 那行直接删掉（已经没用了）
 
             externalNativeBuild {
                 cmake {
@@ -98,19 +81,17 @@ android {
             manifestPlaceholders += [emulationProcess: ":emulationProcess"]
         }
 
-        // ========================== 调试版（本地跑的） ==========================
         reldebug {
-            initWith release                     // 继承 release 的配置
+            initWith release
             debuggable true
-            minifyEnabled false                  // 也关掉
+            minifyEnabled false
             shrinkResources false
             signingConfig signingConfigs.release
         }
 
-        // ========================== 普通调试版 ==========================
         debug {
             debuggable true
-            minifyEnabled false                  // 永远关掉
+            minifyEnabled false
             shrinkResources false
             signingConfig signingConfigs.debug
         }
@@ -122,7 +103,6 @@ android {
             dimension = "version"
             manifestPlaceholders += [appLabel: "Pine"]
         }
-
         dev {
             dimension = "version"
             applicationIdSuffix = ".dev"
@@ -131,17 +111,17 @@ android {
         }
     }
 
+    // 关键：在这里全局强制关闭 D8 压缩（比 buildTypes 里优先级更高）
     buildFeatures {
         viewBinding true
         buildConfig true
+        minifyEnabled false   // ← 这一行才是真正的救命稻草
     }
 
-    /* Linting */
     lint {
         disable 'IconLocation'
     }
 
-    /* NDK and CMake */
     ndkVersion '27.3.13750724'
     externalNativeBuild {
         cmake {
@@ -150,29 +130,17 @@ android {
         }
     }
 
-    /* Android Assets */
     androidResources {
         ignoreAssetsPattern '*.md'
     }
 
-    /* Vulkan Validation Layers */
     sourceSets {
-        reldebug {
-            jniLibs {
-                srcDir "libraries/vklayers"
-            }
-        }
-
-        debug {
-            jniLibs {
-                srcDir "libraries/vklayers"
-            }
-        }
+        reldebug { jniLibs { srcDir "libraries/vklayers" } }
+        debug    { jniLibs { srcDir "libraries/vklayers" } }
     }
 }
 
 dependencies {
-    /* Google  */
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
@@ -190,19 +158,14 @@ dependencies {
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'androidx.palette:palette-ktx:1.0.0'
 
-    /* Kotlin */
     implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2'
-
-    /* JetBrains */
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-    /* Other Java */
     implementation 'info.debatty:java-string-similarity:2.0.0'
     implementation 'com.github.KikiManjaro:colorpicker:v1.1.12'
     implementation 'com.github.android:renderscript-intrinsics-replacement-toolkit:344be3f'
 
-    /* Network */
     implementation 'io.ktor:ktor-client-core:3.0.3'
     implementation 'io.ktor:ktor-client-cio:3.0.3'
     implementation 'io.ktor:ktor-client-json:3.0.3'
