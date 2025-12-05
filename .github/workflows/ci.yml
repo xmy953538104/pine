@@ -84,14 +84,6 @@ jobs:
           echo "=== 如果上面没内容，说明错误在 kapt，先打印 kapt 日志 ==="
           cat app/build/tmp/kapt3/stubs/fullRelease/*.txt 2>/dev/null || true
 
-      # 新增：验证APK是release变体（可选，确保无debug）
-      - name: Verify Release APK
-        if: env.UPLOAD_ARTIFACTS == 'true'
-        run: |
-          ./gradlew bundleFull${{ env.BUILD_TYPE }}Analyze  # 分析release bundle，确认变体
-          echo "Release APK verified: $(ls -la app/build/outputs/apk/full/${{ env.BUILD_TYPE }}/)"  # 列出文件确认
-
-      # 简化：统一重命名APK（signed或unsigned）
       - name: Rename APK
         if: env.UPLOAD_ARTIFACTS == 'true'
         run: |
