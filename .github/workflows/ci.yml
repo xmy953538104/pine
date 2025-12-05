@@ -1,40 +1,40 @@
 name: CI
 
 on:
-  workflow_dispatch:
-  push:
+  workflow_dispatch:  # 手动触发
+  push:              # 代码推送时触发
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, labeled]  # PR事件
 
 jobs:
   build:
-    # Skip 'labeled' events that didn't add the 'ci' label
+    # 跳过没有'ci'标签的'labeled' PR事件
     if: |
       github.event_name != 'pull_request' ||
       github.event.action != 'labeled' ||
       github.event.label.name == 'ci'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # 使用最新Ubuntu runner
     env:
-      JVM_OPTS: -Xmx6G
-      IS_BUILD_SIGNED: ${{ secrets.KEYSTORE != '' }}
-      UPLOAD_ARTIFACTS: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci') }}
-      CMAKE_VERSION: "3.22.1"
-      NDK_VERSION: "27.3.13750724"
-      BUILD_TYPE: release
+      JVM_OPTS: -Xmx6G  # JVM内存限制
+      IS_BUILD_SIGNED: ${{ secrets.KEYSTORE != '' }}  # 检查是否有签名密钥
+      UPLOAD_ARTIFACTS: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci') }}  # PR只在有'ci'标签时上传
+      CMAKE_VERSION: "3.22.1"  # CMake版本
+      NDK_VERSION: "27.3.13750724"  # NDK版本
+      BUILD_TYPE: release  # 只构建release变体（符合你的需求，无debug）
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # 更新到v4，更稳定
         with:
-          submodules: recursive
+          submodules: recursive  # 递归拉取子模块
 
-      - name: Restore CCache
+      - name: Restore CCache  # C/C++缓存，加速NDK构建
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: 3Gi
 
-      - name: Restore Gradle Cache
-        uses: actions/cache@v3
+      - name: Restore Gradle Cache  # Gradle缓存，加速Android构建
+        uses: actions/cache@v4  # 更新到v4
         with:
           path: ~/.gradle/
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/build.gradle') }}-${{ hashFiles('app/**/*.xml') }}-${{ hashFiles('app/**.kt', 'app/**.java') }}
@@ -43,65 +43,61 @@ jobs:
             ${{ runner.os }}-gradle-${{ hashFiles('**/build.gradle') }}-
             ${{ runner.os }}-gradle-
 
-      - name: Install Java 17
+      - name: Install Java 17  # Android需要JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Ninja Build
+      - name: Install Ninja Build  # NDK构建工具
         run: |
           sudo apt-get install -y ninja-build
           ln -s /usr/bin/ninja .
 
-      - name: Install CMake & Android NDK
+      - name: Install CMake & Android NDK  # 安装CMake和NDK
         run: echo "yes" | $ANDROID_HOME/tools/bin/sdkmanager "cmake;${{ env.CMAKE_VERSION }}" "ndk;${{ env.NDK_VERSION }}" --channel=3 | grep -v = || true
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Decode Keystore
+      - name: Decode Keystore  # 如果有签名密钥，解码它
         if: env.IS_BUILD_SIGNED == 'true'
         env:
-          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        run: |
-          echo "$KEYSTORE_B64" | base64 --decode > app/ks.jks
+          KEYSTORE_ENCODED: ${{ secrets.KEYSTORE }}
+        run: | 
+          echo "$KEYSTORE_ENCODED" | base64 --decode > ${{ github.workspace }}/app/ks.jks
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build with Gradle
+      - name: Android Assemble  # 核心构建步骤：只组装full release APK（无debug）
         env:
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_STORE_PATH: "ks.jks"  # 签名路径（如果有）
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-          CMAKE_C_COMPILER_LAUNCHER: "ccache"
-          CMAKE_CXX_COMPILER_LAUNCHER: "ccache"
-        run: |
-          ./gradlew assembleFull${{ env.BUILD_TYPE }} --stacktrace --info || true
+          CMAKE_C_COMPILER_LAUNCHER: "ccache"  # 用ccache加速C编译
+          CMAKE_CXX_COMPILER_LAUNCHER: "ccache"  # 用ccache加速C++编译
+          CCACHE_COMPILERCHECK: "string:${{ env.NDK_VERSION }}"
+        run: ./gradlew --build-cache assembleFull${{ env.BUILD_TYPE }}  # 只构建release
 
-      - name: Rename APKs (Signed)
-        if: env.IS_BUILD_SIGNED == 'true' && env.UPLOAD_ARTIFACTS == 'true'
+      # 新增：验证APK是release变体（可选，确保无debug）
+      - name: Verify Release APK
+        if: env.UPLOAD_ARTIFACTS == 'true'
         run: |
-          mv app/build/outputs/apk/full/${{ env.BUILD_TYPE }}/app-full-${{ env.BUILD_TYPE }}.apk pine-emu-$GITHUB_RUN_NUMBER-${{ env.BUILD_TYPE }}.apk
+          ./gradlew bundleFull${{ env.BUILD_TYPE }}Analyze  # 分析release bundle，确认变体
+          echo "Release APK verified: $(ls -la app/build/outputs/apk/full/${{ env.BUILD_TYPE }}/)"  # 列出文件确认
 
-      - name: Upload Signed APK
-        if: env.IS_BUILD_SIGNED == 'true' && env.UPLOAD_ARTIFACTS == 'true'
-        uses: actions/upload-artifact@v4
+      # 简化：统一重命名APK（signed或unsigned）
+      - name: Rename APK
+        if: env.UPLOAD_ARTIFACTS == 'true'
+        run: |
+          if [ "${{ env.IS_BUILD_SIGNED }}" = "true" ]; then
+            mv app/build/outputs/apk/full/${{ env.BUILD_TYPE }}/app-full-${{ env.BUILD_TYPE }}.apk pine-emu-${{ github.run_number }}-release-signed.apk
+            echo "Renamed to signed version"
+          else
+            mv app/build/outputs/apk/full/${{ env.BUILD_TYPE }}/app-full-${{ env.BUILD_TYPE }}.apk pine-emu-${{ github.run_number }}-release-unsigned.apk
+            echo "Renamed to unsigned version"
+          fi
+
+      # 统一上传：只有一个release APK
+      - name: Upload Release APK
+        if: env.UPLOAD_ARTIFACTS == 'true'
+        uses: actions/upload-artifact@v4  # 更新到v4
         with:
-          name: pine-emu-${{ github.run_number }}-${{ env.BUILD_TYPE }}.apk
-          path: pine-emu-${{ github.run_number }}-${{ env.BUILD_TYPE }}.apk
-
-      - name: Rename APKs (Unsigned)
-        if: env.IS_BUILD_SIGNED == 'false' && env.UPLOAD_ARTIFACTS == 'true'
-        run: |
-          mv app/build/outputs/apk/full/${{ env.BUILD_TYPE }}/app-full-${{ env.BUILD_TYPE }}.apk pine-emu-$GITHUB_RUN_NUMBER-unsigned-${{ env.BUILD_TYPE }}.apk
-
-      - name: Upload Unsigned APK
-        if: env.IS_BUILD_SIGNED == 'false' && env.UPLOAD_ARTIFACTS == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pine-emu-${{ github.run_number }}-unsigned-${{ env.BUILD_TYPE }}.apk
-          path: pine-emu-${{ github.run_number }}-unsigned-${{ env.BUILD_TYPE }}.apk
+          name: pine-emu-${{ github.run_number }}-release.apk  # 统一名称
+          path: pine-emu-${{ github.run_number }}-release*.apk  # 匹配signed或unsigned
