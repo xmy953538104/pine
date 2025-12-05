@@ -34,3 +34,6 @@
 
 # @Serializable and @Polymorphic are used at runtime for polymorphic serialization.
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+
+# 或者更狠一点，全部保住
+-keep class emu.skyline.settings.NativeSettings { *; }
