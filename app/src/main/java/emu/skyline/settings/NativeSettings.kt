@@ -30,8 +30,8 @@ data class NativeSettings(
     // GPU
     var gpuDriver : String,
     var gpuDriverLibraryName : String,
-    var forceTripleBuffering : Boolean,
-    var disableFrameThrottling : Boolean,
+    @JvmField var forceTripleBuffering : Boolean = false,
+    @JvmField var disableFrameThrottling : Boolean = false,
     var executorSlotCountScale : Int,
     var executorFlushThreshold : Int,
     var useDirectMemoryImport : Boolean,
