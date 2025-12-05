@@ -75,6 +75,15 @@ jobs:
           CCACHE_COMPILERCHECK: "string:${{ env.NDK_VERSION }}"
         run: ./gradlew --build-cache assembleFull${{ env.BUILD_TYPE }}  # 只构建release
 
+      - name: Show Kotlin compile errors
+        if: failure()
+        run: |
+          echo "=== 强制打印所有 Kotlin 错误 ==="
+          cat app/build/tmp/kotlin-classes/fullRelease/*.class 2>/dev/null || true
+          find app -name "*.kt" -exec grep -l "nativeSetVsync\|nativeSetSwapInterval" {} \; || true
+          echo "=== 如果上面没内容，说明错误在 kapt，先打印 kapt 日志 ==="
+          cat app/build/tmp/kapt3/stubs/fullRelease/*.txt 2>/dev/null || true
+
       # 新增：验证APK是release变体（可选，确保无debug）
       - name: Verify Release APK
         if: env.UPLOAD_ARTIFACTS == 'true'
